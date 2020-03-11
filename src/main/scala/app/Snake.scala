@@ -38,10 +38,10 @@ object Snake {
   type Snake = Seq[Point]
 
   class State(
-    val snake: Seq[Point],
+    val snake: Snake,
     val direction: Direction,
     val nextDirection: Direction,
-    val apple: Point,
+    val apple: Apple,
     val score: Int,
     val isRunning: Boolean,
   ) {
@@ -49,7 +49,7 @@ object Snake {
       snake: Snake = this.snake,
       direction: Direction = this.direction,
       nextDirection: Direction = this.nextDirection,
-      apple: Point = this.apple,
+      apple: Apple = this.apple,
       score: Int = this.score,
       isRunning: Boolean = this.isRunning,
     ): State = new State(
@@ -67,10 +67,15 @@ object Snake {
 
   case class Point(val x: Int, val y: Int)
 
-  def createApple (): Point = {
+  case class Apple(val location: Point, val score: Int)
+
+  val APPLE_SCORES = Array(0, 5, 5, 10, 10, 10, 10, 20, 20, 30)
+
+  def createApple (): Apple = {
     val x = rand.nextInt(WIDTH / SIZE) * SIZE
     val y = rand.nextInt(HEIGHT / SIZE) * SIZE
-    Point(x, y)
+    val score = APPLE_SCORES(rand.nextInt(APPLE_SCORES.length))
+    Apple(Point(x, y), score)
   }
 
   def collision (a: Point, b: Point) = {
@@ -120,7 +125,7 @@ object Snake {
       snake: Seq[Point],
       direction: Direction = Right,
       nextDirection: Direction = Right,
-      apple: Point = createApple(),
+      apple: Apple = createApple(),
       score: Int = 0,
       isRunning: Boolean = true,
     ): State =
@@ -161,7 +166,7 @@ object Snake {
   }
 
   def updateApple (prev: State): State = {
-    if (collision(prev.snake.head, prev.apple)) {
+    if (collision(prev.snake.head, prev.apple.location)) {
       eatApple(prev)
     }
     else prev
@@ -171,7 +176,7 @@ object Snake {
     prev.update(
       snake = prev.snake :+ prev.snake.last,
       apple = createApple(),
-      score = prev.score + 10,
+      score = prev.score + prev.apple.score,
     )
 
 
@@ -321,8 +326,8 @@ object Snake {
       )
     }
 
-    def apple (state: Point): VNode = {
-      val Point(x, y) = state
+    def apple (apple: Apple): VNode = {
+      val Point(x, y) = apple.location
       g(
         withKey("apple"),
         List(
