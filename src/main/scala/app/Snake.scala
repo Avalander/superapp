@@ -74,11 +74,15 @@ object Snake {
 
   val APPLE_SCORES = Array(0, 5, 5, 5, 10, 10, 10, 10, 10, 10, 10, 20, 20, 20, 30)
 
-  def createApple (): Apple = {
-    val x = rand.nextInt(WIDTH / SIZE) * SIZE
-    val y = rand.nextInt(HEIGHT / SIZE) * SIZE
+  def createApple (forbidden: Seq[Point]): Apple = {
+    val location = (LazyList.from(1) map {
+      (_) => Point(
+        rand.nextInt(WIDTH / SIZE) * SIZE,
+        rand.nextInt(HEIGHT / SIZE) * SIZE
+      )
+    } filter (!forbidden.contains(_))).head
     val score = APPLE_SCORES(rand.nextInt(APPLE_SCORES.length))
-    Apple(Point(x, y), score)
+    Apple(location, score)
   }
 
   def collision (a: Point, b: Point) = {
@@ -128,7 +132,7 @@ object Snake {
       snake: Seq[Point],
       direction: Direction = Right,
       nextDirection: Direction = Right,
-      apple: Apple = createApple(),
+      apple: Apple = Apple(Point(10 * SIZE, 4 * SIZE), 10),
       score: Int = 0,
       isRunning: Boolean = true,
       updateInterval: Int = 150,
@@ -181,10 +185,9 @@ object Snake {
     val updateInterval =
       if (prev.score / 100 != score / 100) updateSpeed(prev)
       else prev.updateInterval
-    println(s"Speed $updateInterval")
     prev.update(
       snake = prev.snake :+ prev.snake.last,
-      apple = createApple(),
+      apple = createApple(prev.snake),
       score = score,
       updateInterval = updateInterval,
     )
