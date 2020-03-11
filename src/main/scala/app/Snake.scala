@@ -44,6 +44,7 @@ object Snake {
     val apple: Apple,
     val score: Int,
     val isRunning: Boolean,
+    val updateInterval: Int
   ) {
     def update (
       snake: Snake = this.snake,
@@ -52,6 +53,7 @@ object Snake {
       apple: Apple = this.apple,
       score: Int = this.score,
       isRunning: Boolean = this.isRunning,
+      updateInterval: Int = this.updateInterval,
     ): State = new State(
       snake,
       direction,
@@ -59,6 +61,7 @@ object Snake {
       apple,
       score,
       isRunning,
+      updateInterval,
     )
 
     def end (): State =
@@ -69,7 +72,7 @@ object Snake {
 
   case class Apple(val location: Point, val score: Int)
 
-  val APPLE_SCORES = Array(0, 5, 5, 10, 10, 10, 10, 20, 20, 30)
+  val APPLE_SCORES = Array(0, 5, 5, 5, 10, 10, 10, 10, 10, 10, 10, 20, 20, 20, 30)
 
   def createApple (): Apple = {
     val x = rand.nextInt(WIDTH / SIZE) * SIZE
@@ -128,8 +131,9 @@ object Snake {
       apple: Apple = createApple(),
       score: Int = 0,
       isRunning: Boolean = true,
+      updateInterval: Int = 150,
     ): State =
-      new State(snake, direction, nextDirection, apple, score, isRunning)
+      new State(snake, direction, nextDirection, apple, score, isRunning, updateInterval)
   }
 
 
@@ -172,19 +176,30 @@ object Snake {
     else prev
   }
 
-  def eatApple (prev: State): State =
+  def eatApple (prev: State): State = {
+    val score = prev.score + prev.apple.score
+    val updateInterval =
+      if (prev.score / 100 != score / 100) updateSpeed(prev)
+      else prev.updateInterval
+    println(s"Speed $updateInterval")
     prev.update(
       snake = prev.snake :+ prev.snake.last,
       apple = createApple(),
-      score = prev.score + prev.apple.score,
+      score = score,
+      updateInterval = updateInterval,
     )
+  }
+  
+  def updateSpeed (prev: State): Int =
+    if (prev.updateInterval > 30) prev.updateInterval - 10
+    else prev.updateInterval
 
 
   // Effects
 
   sealed trait Effect
   case class Delay(dt: Int, m: Message) extends Effect
-  case object Frame extends Effect
+  case class Frame(dt: Int) extends Effect
   case object KeyDown extends Effect
 
   implicit def effectHandler (dispatch: Dispatch[Message], effect: Effect): Unit = {
@@ -194,10 +209,10 @@ object Snake {
           dispatch(m)
         }
       }
-      case Frame => {
+      case Frame(dt) => {
         dispatch(UpdateApple)
         dispatch(UpdateState)
-        effectHandler(dispatch, Delay(150, Continue))
+        effectHandler(dispatch, Delay(dt, Continue))
       }
       case KeyDown => {
         def listener(ev: KeyboardEvent): Unit = {
@@ -230,7 +245,7 @@ object Snake {
         ),
         List(
           KeyDown,
-          Frame
+          Frame(150)
         )
       )
       def update(prev: State, message: Message): (State, Seq[Effect]) = {
@@ -249,10 +264,10 @@ object Snake {
           )
           case Continue =>
             if (hasLost(prev.snake)) (prev.end, Nil)
-            else (prev, List(Frame))
+            else (prev, List(Frame(prev.updateInterval)))
           case Restart =>
             if (prev.isRunning) (prev, Nil)
-            else (init()._1, List(Frame))
+            else (init()._1, List(Frame(150)))
         }
       }
       def view(state: State, dispatch: Dispatch[Message]): VNode = {
