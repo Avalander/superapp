@@ -35,6 +35,8 @@ object Snake {
 
   // State
 
+  type Snake = Seq[Point]
+
   class State(
     val snake: Seq[Point],
     val direction: Direction,
@@ -43,45 +45,24 @@ object Snake {
     val score: Int,
     val isRunning: Boolean,
   ) {
-    def withSnake (snake: Seq[Point]): State =
-      new State(
-        snake = snake,
-        direction = this.direction,
-        nextDirection = this.nextDirection,
-        apple = this.apple,
-        score = this.score,
-        isRunning = this.isRunning,
-      )
-
-    def withApple (apple: Point): State =
-      new State(
-        snake = this.snake,
-        direction = this.direction,
-        nextDirection = this.nextDirection,
-        apple = apple,
-        score = this.score,
-        isRunning = this.isRunning,
-      )
-
-    def incScore (value: Int): State =
-      new State(
-        snake = this.snake,
-        direction = this.direction,
-        nextDirection = this.nextDirection,
-        apple = this.apple,
-        score = this.score + value,
-        isRunning = this.isRunning,
-      )
+    def update (
+      snake: Snake = this.snake,
+      direction: Direction = this.direction,
+      nextDirection: Direction = this.nextDirection,
+      apple: Point = this.apple,
+      score: Int = this.score,
+      isRunning: Boolean = this.isRunning,
+    ): State = new State(
+      snake,
+      direction,
+      nextDirection,
+      apple,
+      score,
+      isRunning,
+    )
 
     def end (): State =
-      new State(
-        snake = this.snake,
-        direction = this.direction,
-        nextDirection = this.nextDirection,
-        apple = this.apple,
-        score = this.score,
-        isRunning = false,
-      )
+      this.update(isRunning = false)
   }
 
   case class Point(val x: Int, val y: Int)
@@ -167,32 +148,16 @@ object Snake {
     }
   }
 
-  def growSnake (prev: State): State =
-    prev withSnake {
-      prev.snake :+ prev.snake.last
-    }
-
   def updateState (prev: State): State = {
-    State.of(
+    prev.update(
       snake = updateSnake(prev.snake, prev.nextDirection),
       direction = prev.nextDirection,
-      nextDirection = prev.nextDirection,
-      apple = prev.apple,
-      score = prev.score,
-      isRunning = prev.isRunning,
     )
   }
 
   def changeDirection (prev: State, next: Direction): State = {
     if (prev.direction.opposite == next) prev
-    else State.of(
-      snake = prev.snake,
-      direction = prev.direction,
-      nextDirection = next,
-      apple = prev.apple,
-      score = prev.score,
-      isRunning = prev.isRunning,
-    )
+    else prev.update(nextDirection = next)
   }
 
   def updateApple (prev: State): State = {
@@ -203,7 +168,11 @@ object Snake {
   }
 
   def eatApple (prev: State): State =
-    growSnake(prev withApple (createApple()) incScore 10)
+    prev.update(
+      snake = prev.snake :+ prev.snake.last,
+      apple = createApple(),
+      score = prev.score + 10,
+    )
 
 
   // Effects
@@ -246,16 +215,19 @@ object Snake {
   def app (parent: dom.Element): App[State, Message, Effect] =
     new App[State, Message, Effect] {
       val node = parent
-      def init(): (State, Seq[Effect]) = (State.of(
-        snake = List(
-          Point(3 * SIZE, 3 * SIZE),
-          Point(2 * SIZE, 3 * SIZE),
-          Point(1 * SIZE, 3 * SIZE),
+      def init(): (State, Seq[Effect]) = (
+        State.of(
+          snake = List(
+            Point(3 * SIZE, 3 * SIZE),
+            Point(2 * SIZE, 3 * SIZE),
+            Point(1 * SIZE, 3 * SIZE),
+          )
+        ),
+        List(
+          KeyDown,
+          Frame
         )
-      ), List(
-        KeyDown,
-        Frame
-      ))
+      )
       def update(prev: State, message: Message): (State, Seq[Effect]) = {
         message match {
           case UpdateState => (
@@ -279,18 +251,12 @@ object Snake {
         }
       }
       def view(state: State, dispatch: Dispatch[Message]): VNode = {
-        svg(
-          js.Dynamic.literal(
-            viewBox = s"0 0 $WIDTH $HEIGHT",
-            width = WIDTH,
-            height = HEIGHT
-          ), List(
-            Views.background(),
-            Views.apple(state.apple),
-            Views.snake(state),
-            if (state.isRunning) Views.score(state.score)
-            else Views.gameOver(state.score),
-          )
+        Views.viewbox(
+          Views.background(),
+          Views.apple(state.apple),
+          Views.snake(state),
+          if (state.isRunning) Views.score(state.score)
+          else Views.gameOver(state.score),
         )
       }
     }
@@ -307,6 +273,13 @@ object Snake {
       js.Dynamic.literal(
         key = _key
       )
+    
+    def viewbox (children: VNode*): VNode =
+      svg(js.Dynamic.literal(
+        viewBox = s"0 0 $WIDTH $HEIGHT",
+        width = WIDTH,
+        height = HEIGHT,
+      ), children)
 
     def background (): VNode = {
       g(
