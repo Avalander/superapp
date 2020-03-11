@@ -15,30 +15,10 @@ import api.{fetchJoke, Joke}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
+import tea.{App, BasicApp, Dispatch, EffectHandler, start}
+
 object Super {
   private val EmptyObj = js.Dynamic.literal()
-
-  type Dispatch[M] = M => Unit
-
-  trait App[T, M] {
-    def init(): T
-    def view(state: T, dispatch: Dispatch[M]): js.Object
-    def update(prev: T, message: M): T
-    val node: dom.Element
-  }
-
-  def start[T, M](app: App[T, M]): Unit = {
-    var _state = app.init()
-    var _node = app.node
-
-    def dispatch (message: M): Unit = setState(app.update(_state, message))
-    def setState (state: T): Unit = {
-      _state = state
-      _node = patch(_node, app.view(state, dispatch))
-    }
-
-    setState(_state)
-  }
 
   def counter(): Unit = {
     type State = Int
@@ -47,7 +27,7 @@ object Super {
     case object Increment extends Message
     case object Decrement extends Message
 
-    start(new App[State, Message] {
+    start(new BasicApp[State, Message] {
       val node = document.querySelector("#app")
 
       def init(): State = 0
@@ -57,7 +37,7 @@ object Super {
           case Decrement => prev - 1
           case Increment => prev + 1
         }
-      
+
       def view(state: State, dispatch: Dispatch[Message]): js.Object = {
         div(EmptyObj, js.Array(
           h1(EmptyObj, state.toString),
@@ -86,21 +66,33 @@ object Super {
     case object FetchJoke extends Message
     case class JokeError(e: Throwable) extends Message
 
-    start(new App[State, Message] {
+    sealed trait Effect
+    case object OnFetchJoke extends Effect
+
+    implicit def handleEffect (dispatch: Dispatch[Message], effect: Effect): Unit =
+      effect match {
+        case OnFetchJoke =>
+          fetchJoke() andThen {
+            case Failure(e) => dispatch(JokeError(e))
+            case Success(j) => dispatch(SetJoke(j.joke))
+          }
+      }
+
+    start(new App[State, Message, Effect] {
       val node = document.querySelector("#jokes")
 
-      def init(): State = None
+      def init(): (State, Seq[Effect]) = (None, List(OnFetchJoke))
 
-      def update (prev: State, message: Message): State =
+      def update (prev: State, message: Message): (State, Seq[Effect]) =
         message match {
-          case SetJoke(joke) => Some(joke)
-          case FetchJoke     => None
+          case SetJoke(joke) => (Some(joke), Nil)
+          case FetchJoke     => (prev, List(OnFetchJoke))
           case JokeError(e)  => {
             println(e)
-            Some("Oops, something went wrong")
+            (Some("Oops, something went wrong"), Nil)
           }
         }
-      
+
       def view (state: State, dispatch: Dispatch[Message]): VNode = {
         state match {
           case None =>
@@ -117,41 +109,12 @@ object Super {
               p(EmptyObj, joke),
               button(js.Dynamic.literal(
                 onclick = {
-                  (e: dom.Event) => {
-                    // dispatch(FetchJoke)
-                    fetchJoke() andThen {
-                      case Failure(e) => dispatch(JokeError(e))
-                      case Success(j) => dispatch(SetJoke(j.joke))
-                    }
-                  }
+                  (e: dom.Event) => dispatch(FetchJoke)
                 }
               ), "Another joke!")
             ))
         }
       }
     })
-  }
-
-  def app(): Unit = {
-    val node = document.querySelector("#app")
-
-    def setState[T] (state: T): Unit = {
-      val view = h("div", EmptyObj, js.Array(
-        h("h1", EmptyObj, state.toString),
-        h("input", js.Dynamic.literal(
-          `type` = "text",
-          value = state.toString,
-          oninput = {
-            (e: js.Dynamic) => {
-              setState(e.target.value)
-            }
-          },
-          autofocus = true
-        ))
-      ))
-      patch(node, view)
-    }
-
-    setState("Potato")
   }
 }
