@@ -1,6 +1,11 @@
 package app
 
 import superfine._
+import superfine.Html._
+import superfine.{
+  Attributes => Attrs,
+  EventHandlers => Ev,
+}
 import tea.{BasicApp, Dispatch, start}
 
 import org.scalajs.dom.{document, Event}
@@ -25,17 +30,17 @@ object Counter {
         }
       
       def view (state: State, dispatch: Dispatch[Message]) = {
-        hh("div", Props(), Children(
-          hh("h1", Props(
-            StringProp("class", "title")
+        div(Props.empty, Children(
+          h1(Props(
+            Attrs.`class`("title"),
           ), TextContent(state.toString)),
-          hh("div", Props(), Children(
-            hh("button", Props(
-              EventProp("onclick", (e: Event) => dispatch(Decrement))
+          div(Props.empty, Children(
+            button(Props(
+              Ev.onClick((e: Event) => dispatch(Decrement))
             ), TextContent(" - ")),
-            hh("button", Props(
-              EventProp("onclick", (e: Event) => dispatch(Increment))
-            ), TextContent(" + ")),
+            button(Props(
+              Ev.onClick((e: Event) => dispatch(Increment))
+            ), TextContent(" + "))
           ))
         ))
       }

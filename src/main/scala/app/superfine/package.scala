@@ -18,6 +18,7 @@ package object superfine {
   type Props = Seq[Prop]
   object Props {
     def apply (props: Prop*) = props.toList
+    def empty = Props()
   }
 
   sealed trait NodeContent
@@ -33,6 +34,7 @@ package object superfine {
       case StringProp(key, value) => (key -> value)
       case IntProp(key, value)    => (key -> value)
     }).toMap.toJSDictionary
+
     content match {
       case TextContent(text) => Superfine.h(tag, _props, text)
       case Children(nodes)   => Superfine.h(tag, _props, nodes.toJSArray)
