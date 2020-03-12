@@ -3,8 +3,8 @@ package app.superfine
 import Superfine.h
 
 object dom {
-  private def vnode(tag: String): (Props, Children) => VNode =
-    h(tag, _: Props, _: Children)
+  private def vnode(tag: String): (Superfine.Props, Superfine.Children) => VNode =
+    h(tag, _: Superfine.Props, _: Superfine.Children)
   val div = vnode("div")
   val h1 = vnode("h1")
   val h2 = vnode("h2")

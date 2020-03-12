@@ -11,6 +11,7 @@ import scala.scalajs.js.annotation.JSExportTopLevel
 import app.api.{fetchJoke, Joke}
 import app.Super
 import app.Snake
+import app.Counter
 
 object App {
   def appendPar (targetNode: dom.Node, text: String, id: Option[String] = None): Unit = {
@@ -35,6 +36,7 @@ object App {
       (e: dom.Event) => {
         setupUI()
         Snake.snake()
+        Counter.mount()
         fetchJoke() andThen {
           case Success(j) => document.querySelector("#joke").textContent = j.joke
           case Failure(e) => println(e)

@@ -8,7 +8,7 @@ import org.scalajs.dom
 
 package object tea {
   type Dispatch[M] = M => Unit
-  type EffectHandler[M, E] = (M => Unit, E) => Unit
+  type EffectHandler[M, E] = (Dispatch[M], E) => Unit
 
   trait BasicApp[S, M] {
     def init (): S
